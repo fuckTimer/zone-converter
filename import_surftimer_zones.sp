@@ -110,7 +110,11 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 			}
 			else
 			{
-				if (iZoneType == 1)
+				if (iZoneType == 0)
+				{
+					FormatEx(sName, sizeof(sName), "stop%d", iZoneTypeID + 2);
+				}
+				else if (iZoneType == 1)
 				{
 					FormatEx(sName, sizeof(sName), "main%d_start", iZoneGroup);
 				}
@@ -120,37 +124,45 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 				}
 				else if (iZoneType == 3)
 				{
-					FormatEx(sName, sizeof(sName), "stage%d", iZoneTypeID + 1);
+					FormatEx(sName, sizeof(sName), "stage%d", iZoneTypeID + 2);
 				}
 				else if (iZoneType == 4)
 				{
-					FormatEx(sName, sizeof(sName), "checkpoint%d", iZoneTypeID + 1);
+					FormatEx(sName, sizeof(sName), "checkpoint%d", iZoneTypeID + 2);
 				}
 				else if (iZoneType == 5)
 				{
-					FormatEx(sName, sizeof(sName), "speed%d", iZoneTypeID + 1);
+					FormatEx(sName, sizeof(sName), "speed%d", iZoneTypeID + 2);
 				}
 				else if (iZoneType == 6)
 				{
-					FormatEx(sName, sizeof(sName), "teletostart%d", iZoneTypeID + 1);
+					FormatEx(sName, sizeof(sName), "teletostart%d", iZoneTypeID + 2);
 				}
 				else if (iZoneType == 7)
 				{
-					FormatEx(sName, sizeof(sName), "validator%d", iZoneTypeID + 1);
+					FormatEx(sName, sizeof(sName), "validator%d", iZoneTypeID + 2);
 				}
 				else if (iZoneType == 8)
 				{
-					FormatEx(sName, sizeof(sName), "checker%d", iZoneTypeID + 1);
+					FormatEx(sName, sizeof(sName), "checker%d", iZoneTypeID + 2);
 				}
-				else if (iZoneType == 0)
+				else if (iZoneType == 9)
 				{
-					FormatEx(sName, sizeof(sName), "stop%d", iZoneTypeID + 1);
+					FormatEx(sName, sizeof(sName), "antijump%d", iZoneTypeID + 2);
+				}
+				else if (iZoneType == 10)
+				{
+					FormatEx(sName, sizeof(sName), "antiduck%d", iZoneTypeID + 2);
+				}
+				else if (iZoneType == 11)
+				{
+					FormatEx(sName, sizeof(sName), "maxspeed%d", iZoneTypeID + 2);
 				}
 			}
 
 			if (strlen(sName) > 2)
 			{
-				PrepareZone(sName, sMap, iZoneType, iZoneTypeID, bBonus, fPointA, fPointB, sHookName, count);
+				PrepareZone(sName, sMap, iZoneType, iZoneTypeID + 2, iZoneGroup, bBonus, fPointA, fPointB, sHookName, count);
 				count++;
 			}
 		}
@@ -162,7 +174,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 	}
 }
 
-void PrepareZone(const char[] name, const char[] map, int type, int typeid, bool bonus, float[3] pointA, float[3] pointB, const char[] hookname, int count)
+void PrepareZone(const char[] name, const char[] map, int type, int typeid, int group, bool bonus, float[3] pointA, float[3] pointB, const char[] hookname, int count)
 {
 	bool bTrigger = false;
 
@@ -191,17 +203,16 @@ void PrepareZone(const char[] name, const char[] map, int type, int typeid, bool
 
 	char sBuffer[12];
 
-	IntToString(bonus, sBuffer, sizeof(sBuffer));
+	IntToString(group, sBuffer, sizeof(sBuffer));
 	smKeys.SetString("Bonus", sBuffer);
 	
 	smKeys.SetString("Start", type == 1 ? "1" : "0");
 	smKeys.SetString("End", type == 2 ? "1" : "0");
 
-	IntToString(typeid+1, sBuffer, sizeof(sBuffer));
+	IntToString(typeid, sBuffer, sizeof(sBuffer));
 	smKeys.SetString("Stage", type == 3 ? sBuffer : "0");
 
-
-	IntToString(typeid+1, sBuffer, sizeof(sBuffer));
+	IntToString(typeid, sBuffer, sizeof(sBuffer));
 	smKeys.SetString("Checkpoint", type == 4 ? sBuffer : "0");
 
 	smKeys.SetString("Misc", !bonus && (type == 0 || type > 4) ? "1" : "0");
