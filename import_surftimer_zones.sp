@@ -4,8 +4,30 @@
 #include <sourcemod>
 #include <fuckZones>
 
-StringMap g_smZones = null;
+ArrayList g_aZones = null;
 ArrayList g_aMaps = null;
+
+enum struct eImportZone
+{
+	char Name[MAX_ZONE_NAME_LENGTH];
+	int Type;
+	float Start[3];
+	float End[3];
+	float Origin[3];
+	char OriginName[32];
+	float Teleport[3];
+	float Radius;
+	char Color[64];
+	int iColors[4];
+	ArrayList PointsData;
+	float PointsHeight;
+	StringMap Effects;
+	int Display;
+	bool SetName;
+	bool Show;
+	int ID;
+	char Map[32];
+}
 
 public void OnPluginStart()
 {
@@ -46,8 +68,8 @@ public void OnConnect(Database db, const char[] error, any data)
 
 	PrintToServer("Loading zones...");
 
-	char sQuery[156];
-	db.Format(sQuery, sizeof(sQuery), "SELECT mapname, zoneid, zonetype, zonetypeid, zonegroup, pointa_x, pointa_y, pointa_z, pointb_x, pointb_y, pointb_z, hookname FROM ck_zones;");
+	char sQuery[256];
+	db.Format(sQuery, sizeof(sQuery), "SELECT mapname, zoneid, zonetype, zonetypeid, zonegroup, pointa_x, pointa_y, pointa_z, pointb_x, pointb_y, pointb_z, hookname FROM ck_zones ORDER BY mapname ASC, zonegroup ASC, zonetype ASC, zonetypeID ASC;");
 	db.Query(sql_GetZones, sQuery);
 }
 
@@ -66,13 +88,12 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 		PrintToServer("Found %d zone entries...", results.RowCount);
 		PrintToServer("Preparing zone data...", results.RowCount);
 
-		delete g_smZones;
+		delete g_aZones;
 		delete g_aMaps;
 
-		g_smZones = new StringMap();
+		g_aZones = new ArrayList(sizeof(eImportZone));
 		g_aMaps = new ArrayList(ByteCountToCells(64));
 
-		int count = 1;
 		while (results.FetchRow())
 		{
 			char sMap[32], sHookName[32];
@@ -87,9 +108,9 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 			results.FetchString(0, sMap, sizeof(sMap));
 			results.FetchString(11, sHookName, sizeof(sHookName));
 
-			iZoneID = results.FetchInt(1); if (iZoneID) {} // Workaround
+			iZoneID = results.FetchInt(1);
 			iZoneType = results.FetchInt(2);
-			iZoneTypeID = results.FetchInt(3); if (iZoneTypeID) {} // Workaround
+			iZoneTypeID = results.FetchInt(3);
 			iZoneGroup = results.FetchInt(4);
 
 			fPointA[0] = results.FetchFloat(5);
@@ -103,7 +124,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 			char sName[MAX_ZONE_NAME_LENGTH];
 			bool bBonus = false;
 
-			if (iZoneGroup > 0) // Bonus Zones
+			if (iZoneGroup > 0)
 			{
 				FormatEx(sName, sizeof(sName), "bonus%d_%s", iZoneGroup, iZoneType == 1 ? "start" : "end");
 				bBonus = true;
@@ -162,19 +183,21 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 
 			if (strlen(sName) > 2)
 			{
-				PrepareZone(sName, sMap, iZoneType, iZoneTypeID + 2, iZoneGroup, bBonus, fPointA, fPointB, sHookName, count);
-				count++;
+				PrepareZone(sName, sMap, iZoneID, iZoneType, iZoneTypeID + 2, iZoneGroup, bBonus, fPointA, fPointB, sHookName);
 			}
 		}
 
 		PrintToServer("Zone data prepared...");
+		PrintToServer("Sort array...");
+		SortArray();
+		PrintToServer("Array sorted...");
 		PrintToServer("Creating zone files...");
 		IterateMaps();
 		PrintToServer("Zone files created.");
 	}
 }
 
-void PrepareZone(const char[] name, const char[] map, int type, int typeid, int group, bool bonus, float[3] pointA, float[3] pointB, const char[] hookname, int count)
+void PrepareZone(const char[] name, const char[] map, int id, int type, int typeid, int group, bool bonus, float[3] pointA, float[3] pointB, const char[] hookname)
 {
 	bool bTrigger = false;
 
@@ -222,7 +245,7 @@ void PrepareZone(const char[] name, const char[] map, int type, int typeid, int 
 	smKeys.SetString("Checker", type == 8 ? "1" : "0");
 	smKeys.SetString("Stop", type == 0 ? "1" : "0");
 
-	eCreateZone data;
+	eImportZone data;
 	strcopy(data.Name, MAX_ZONE_NAME_LENGTH, name);
 	data.Type = bTrigger ? ZONE_TYPE_TRIGGER : ZONE_TYPE_BOX;
 	data.Start = pointA;
@@ -248,16 +271,31 @@ void PrepareZone(const char[] name, const char[] map, int type, int typeid, int 
 	data.Display = FindConVar("fuckZones_default_display").IntValue;
 	data.SetName = false;
 	data.Show = false;
-	data.Trigger = -1;
+	data.ID = id;
+	strcopy(data.Map, sizeof(eImportZone::Map), map);
 
-	char sKey[64];
-	FormatEx(sKey, sizeof(sKey), "%s%d", map, count);
-	g_smZones.SetArray(sKey, data, sizeof(data));
+	g_aZones.PushArray(data, sizeof(data));
 
 	if (g_aMaps.FindString(map) == -1)
 	{
 		g_aMaps.PushString(map);
 	}
+}
+
+void SortArray()
+{
+	SortADTArrayCustom(g_aZones, Sorting);
+}
+
+public int Sorting(int i, int j, Handle array, Handle hndl)
+{
+    eImportZone zone1;
+    eImportZone zone2;
+
+    g_aZones.GetArray(i, zone1);
+    g_aZones.GetArray(j, zone2);
+
+    return strcmp(zone1.Name, zone2.Name);
 }
 
 void IterateMaps()
@@ -269,7 +307,7 @@ void IterateMaps()
 		LoopZonesAndCreate(sMap);
 	}
 
-	delete g_smZones;
+	delete g_aZones;
 	delete g_aMaps;
 }
 
@@ -294,28 +332,23 @@ void LoopZonesAndCreate(const char[] map)
 	kv = new KeyValues("zones");
 	kv.ImportFromFile(sFile);
 
-	StringMapSnapshot snap = g_smZones.Snapshot();
+	eImportZone data;
 
-	eCreateZone data;
-	char sKey[64];
-
-	for (int i = 0; i < snap.Length; i++)
+	for (int i = 0; i < g_aZones.Length; i++)
 	{
-		snap.GetKey(i, sKey, sizeof(sKey));
+		g_aZones.GetArray(i, data, sizeof(data));
 
-		if (StrContains(sKey, map, false) != -1)
+		if (StrContains(data.Map, map, false) != -1)
 		{
-			g_smZones.GetArray(sKey, data, sizeof(data));
 			AddZone(kv, data);
 		}
 	}
 
 	kv.ExportToFile(sFile);
 	delete kv;
-	delete snap;
 }
 
-bool AddZone(KeyValues kv, eCreateZone data)
+bool AddZone(KeyValues kv, eImportZone data)
 {
 	if (kv.JumpToKey(data.Name, true))
 	{
