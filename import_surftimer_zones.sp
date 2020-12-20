@@ -228,7 +228,16 @@ void PrepareZone(const char[] name, const char[] map, int type, int typeid, int 
 	data.Start = pointA;
 	data.End = pointB;
 	data.Origin = view_as<float>({0.0, 0.0, 0.0});
-	strcopy(data.OriginName, MAX_ZONE_NAME_LENGTH, hookname);
+	
+	if (strlen(hookname) < 1 || StrEqual(hookname, "none", false))
+	{
+		strcopy(data.OriginName, MAX_ZONE_NAME_LENGTH, data.Name);
+	}
+	else
+	{
+		strcopy(data.OriginName, MAX_ZONE_NAME_LENGTH, hookname);
+	}
+
 	data.Teleport = view_as<float>({0.0, 0.0, 0.0});
 	data.Radius = 10.0;
 	strcopy(data.Color, sizeof(sColor), sColor);
