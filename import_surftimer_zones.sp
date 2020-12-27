@@ -341,19 +341,19 @@ public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error,
 	pack.ReadString(sMap, sizeof(sMap));
 	delete pack;
 
-	PrintToServer("... %s ...", sMap);
-
 	if (results.HasResults && results.FetchRow())
 	{
 		int iTier = results.FetchInt(0);
 
 		LoopZonesAndCreate(sMap, iTier);
+		PrintToServer("Tier loaded for map %s (Tier: %d)", sMap, iTier);
 
 		return;
 	}
 	else
 	{
 		LoopZonesAndCreate(sMap, 0);
+		PrintToServer("Tier not loaded for map %s (Tier: 0)", sMap);
 	}
 }
 
