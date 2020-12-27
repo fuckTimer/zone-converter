@@ -6,6 +6,7 @@
 
 ArrayList g_aZones = null;
 ArrayList g_aMaps = null;
+Database g_dDB = null;
 
 enum struct eImportZone
 {
@@ -27,11 +28,18 @@ enum struct eImportZone
 	bool Show;
 	int ID;
 	char Map[32];
+	int Tier;
 }
 
 public void OnPluginStart()
 {
 	RegAdminCmd("sm_importzones", Command_ImportZones, ADMFLAG_ROOT);
+}
+
+public void OnMapStart()
+{
+	delete g_aMaps;
+	delete g_aZones;
 }
 
 public Action Command_ImportZones(int client, int args)
@@ -56,6 +64,8 @@ public void OnConnect(Database db, const char[] error, any data)
 	}
 
 	PrintToServer("Connected to database...");
+
+	g_dDB = db;
 
 	char sIdent[8];
 	db.Driver.GetIdentifier(sIdent, sizeof(sIdent));
@@ -304,14 +314,50 @@ void IterateMaps()
 	for (int i = 0; i < g_aMaps.Length; ++i)
 	{
 		g_aMaps.GetString(i, sMap, sizeof(sMap));
-		LoopZonesAndCreate(sMap);
+
+		PrintToServer("Loading tier for map %s...", sMap);
+
+		DataPack pack = new DataPack();
+		pack.WriteString(sMap);
+
+		char sQuery[256];
+		g_dDB.Format(sQuery, sizeof(sQuery), "SELECT tier FROM ck_maptier WHERE mapname = \"%s\"", sMap);
+		g_dDB.Query(SQL_GetMapTier, sQuery, pack);
 	}
 
-	delete g_aZones;
 	delete g_aMaps;
 }
 
-void LoopZonesAndCreate(const char[] map)
+public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error, DataPack pack)
+{
+	if (db == null || strlen(error) > 0)
+	{
+		LogError("(SQL_GetMapTier) Query failed: %s", error);
+		return;
+	}
+
+	char sMap[32];
+	pack.Reset();
+	pack.ReadString(sMap, sizeof(sMap));
+	delete pack;
+
+	PrintToServer("... %s ...", sMap);
+
+	if (results.HasResults && results.FetchRow())
+	{
+		int iTier = results.FetchInt(0);
+
+		LoopZonesAndCreate(sMap, iTier);
+
+		return;
+	}
+	else
+	{
+		LoopZonesAndCreate(sMap, 0);
+	}
+}
+
+void LoopZonesAndCreate(const char[] map, int tier)
 {
 	char sPath[PLATFORM_MAX_PATH + 1];
 	BuildPath(Path_SM, sPath, sizeof(sPath), "data/zones/");
@@ -340,6 +386,7 @@ void LoopZonesAndCreate(const char[] map)
 
 		if (StrContains(data.Map, map, false) != -1)
 		{
+			data.Tier = tier;
 			AddZone(kv, data);
 		}
 	}
@@ -371,6 +418,11 @@ bool AddZone(KeyValues kv, eImportZone data)
 		{
 			if (kv.JumpToKey("fuckTimer", true))
 			{
+				if (StrContains(data.Name, "main", false) != -1 && StrContains(data.Name, "start", false) != -1)
+				{
+					kv.SetNum("tier", data.Tier);
+				}
+
 				StringMapSnapshot snap = data.Effects.Snapshot();
 
 				char sKey[MAX_KEY_NAME_LENGTH], sValue[MAX_KEY_VALUE_LENGTH];
