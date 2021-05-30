@@ -29,6 +29,7 @@ enum struct eImportZone
 	int ID;
 	char Map[32];
 	int Tier;
+	int MaxSpeed;
 }
 
 public void OnPluginStart()
@@ -79,7 +80,7 @@ public void OnConnect(Database db, const char[] error, any data)
 	PrintToServer("Loading zones...");
 
 	char sQuery[256];
-	db.Format(sQuery, sizeof(sQuery), "SELECT mapname, zoneid, zonetype, zonetypeid, zonegroup, pointa_x, pointa_y, pointa_z, pointb_x, pointb_y, pointb_z, hookname FROM ck_zones ORDER BY mapname ASC, zonegroup ASC, zonetype ASC, zonetypeID ASC;");
+	db.Format(sQuery, sizeof(sQuery), "SELECT mapname, zoneid, zonetype, zonetypeid, zonegroup, pointa_x, pointa_y, pointa_z, pointb_x, pointb_y, pointb_z, hookname, prespeed FROM ck_zones ORDER BY mapname ASC, zonegroup ASC, zonetype ASC, zonetypeID ASC;");
 	db.Query(sql_GetZones, sQuery);
 }
 
@@ -112,6 +113,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 			int iZoneType;
 			int iZoneTypeID;
 			int iZoneGroup;
+			int iMaxSpeed;
 
 			float fPointA[3], fPointB[3];
 			
@@ -130,6 +132,8 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 			fPointB[0] = results.FetchFloat(8);
 			fPointB[1] = results.FetchFloat(9);
 			fPointB[2] = results.FetchFloat(10);
+
+			iMaxSpeed = results.FetchInt(12);
 
 			char sName[MAX_ZONE_NAME_LENGTH];
 			bool bBonus = false;
@@ -193,7 +197,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 
 			if (strlen(sName) > 2)
 			{
-				PrepareZone(sName, sMap, iZoneID, iZoneType, iZoneTypeID + 2, iZoneGroup, bBonus, fPointA, fPointB, sHookName);
+				PrepareZone(sName, sMap, iZoneID, iZoneType, iZoneTypeID + 2, iZoneGroup, bBonus, fPointA, fPointB, sHookName, iMaxSpeed);
 			}
 		}
 
@@ -207,7 +211,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 	}
 }
 
-void PrepareZone(const char[] name, const char[] map, int id, int type, int typeid, int group, bool bonus, float[3] pointA, float[3] pointB, const char[] hookname)
+void PrepareZone(const char[] name, const char[] map, int id, int type, int typeid, int group, bool bonus, float[3] pointA, float[3] pointB, const char[] hookname, int maxspeed)
 {
 	bool bTrigger = false;
 
@@ -282,6 +286,7 @@ void PrepareZone(const char[] name, const char[] map, int id, int type, int type
 	data.SetName = false;
 	data.Show = false;
 	data.ID = id;
+	data.MaxSpeed = maxspeed;
 	strcopy(data.Map, sizeof(eImportZone::Map), map);
 
 	g_aZones.PushArray(data, sizeof(data));
@@ -412,6 +417,7 @@ bool AddZone(KeyValues kv, eImportZone data)
 		kv.SetVector("end", data.End);
 		kv.SetVector("origin", data.Origin);
 		kv.SetString("origin_name", data.OriginName);
+		kv.SetNum("maxspeed", data.MaxSpeed);
 		kv.SetFloat("radius", data.Radius);
 
 		if (kv.JumpToKey("effects", true))
