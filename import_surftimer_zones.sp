@@ -29,7 +29,7 @@ enum struct eImportZone
 	int ID;
 	char Map[32];
 	int Tier;
-	int MaxSpeed;
+	int PreSpeed;
 }
 
 public void OnPluginStart()
@@ -113,7 +113,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 			int iZoneType;
 			int iZoneTypeID;
 			int iZoneGroup;
-			int iMaxSpeed;
+			int iPreSpeed;
 
 			float fPointA[3], fPointB[3];
 			
@@ -133,7 +133,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 			fPointB[1] = results.FetchFloat(9);
 			fPointB[2] = results.FetchFloat(10);
 
-			iMaxSpeed = results.FetchInt(12);
+			iPreSpeed = results.FetchInt(12);
 
 			char sName[MAX_ZONE_NAME_LENGTH];
 			bool bBonus = false;
@@ -197,7 +197,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 
 			if (strlen(sName) > 2)
 			{
-				PrepareZone(sName, sMap, iZoneID, iZoneType, iZoneTypeID + 2, iZoneGroup, bBonus, fPointA, fPointB, sHookName, iMaxSpeed);
+				PrepareZone(sName, sMap, iZoneID, iZoneType, iZoneTypeID + 2, iZoneGroup, bBonus, fPointA, fPointB, sHookName, iPreSpeed);
 			}
 		}
 
@@ -211,7 +211,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, i
 	}
 }
 
-void PrepareZone(const char[] name, const char[] map, int id, int type, int typeid, int group, bool bonus, float[3] pointA, float[3] pointB, const char[] hookname, int maxspeed)
+void PrepareZone(const char[] name, const char[] map, int id, int type, int typeid, int group, bool bonus, float[3] pointA, float[3] pointB, const char[] hookname, int prespeed)
 {
 	bool bTrigger = false;
 
@@ -286,7 +286,7 @@ void PrepareZone(const char[] name, const char[] map, int id, int type, int type
 	data.SetName = false;
 	data.Show = false;
 	data.ID = id;
-	data.MaxSpeed = maxspeed;
+	data.PreSpeed = prespeed;
 	strcopy(data.Map, sizeof(eImportZone::Map), map);
 
 	g_aZones.PushArray(data, sizeof(data));
@@ -417,7 +417,7 @@ bool AddZone(KeyValues kv, eImportZone data)
 		kv.SetVector("end", data.End);
 		kv.SetVector("origin", data.Origin);
 		kv.SetString("origin_name", data.OriginName);
-		kv.SetNum("maxspeed", data.MaxSpeed);
+		kv.SetNum("prespeed", data.PreSpeed);
 		kv.SetFloat("radius", data.Radius);
 
 		if (kv.JumpToKey("effects", true))
