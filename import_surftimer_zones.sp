@@ -30,6 +30,7 @@ enum struct eImportZone
 	char Map[32];
 	int Tier;
 	int PreSpeed;
+	int MaxVelocity;
 }
 
 public void OnPluginStart()
@@ -326,7 +327,7 @@ void IterateMaps()
 		pack.WriteString(sMap);
 
 		char sQuery[256];
-		g_dDB.Format(sQuery, sizeof(sQuery), "SELECT tier FROM ck_maptier WHERE mapname = \"%s\"", sMap);
+		g_dDB.Format(sQuery, sizeof(sQuery), "SELECT tier, maxvelocity FROM ck_maptier WHERE mapname = \"%s\"", sMap);
 		g_dDB.Query(SQL_GetMapTier, sQuery, pack);
 	}
 
@@ -349,20 +350,21 @@ public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error,
 	if (results.HasResults && results.FetchRow())
 	{
 		int iTier = results.FetchInt(0);
+		int iMaxVelocity = results.FetchInt(1);
 
-		LoopZonesAndCreate(sMap, iTier);
-		PrintToServer("Tier loaded for map %s (Tier: %d)", sMap, iTier);
+		LoopZonesAndCreate(sMap, iTier, iMaxVelocity);
+		PrintToServer("Tier loaded for map %s (Tier: %d, MaxVelocity: %d)", sMap, iTier, iMaxVelocity);
 
 		return;
 	}
 	else
 	{
-		LoopZonesAndCreate(sMap, 0);
+		LoopZonesAndCreate(sMap, 0, 3500);
 		PrintToServer("Tier not loaded for map %s (Tier: 0)", sMap);
 	}
 }
 
-void LoopZonesAndCreate(const char[] map, int tier)
+void LoopZonesAndCreate(const char[] map, int tier, int maxvelocity)
 {
 	char sPath[PLATFORM_MAX_PATH + 1];
 	BuildPath(Path_SM, sPath, sizeof(sPath), "data/zones/");
@@ -392,6 +394,7 @@ void LoopZonesAndCreate(const char[] map, int tier)
 		if (StrContains(data.Map, map, false) != -1)
 		{
 			data.Tier = tier;
+			data.MaxVelocity = maxvelocity;
 			AddZone(kv, data);
 		}
 	}
@@ -427,6 +430,7 @@ bool AddZone(KeyValues kv, eImportZone data)
 				if (StrContains(data.Name, "main", false) != -1 && StrContains(data.Name, "start", false) != -1)
 				{
 					kv.SetNum("tier", data.Tier);
+					kv.SetNum("maxvelocity", data.MaxVelocity);
 				}
 
 				StringMapSnapshot snap = data.Effects.Snapshot();
