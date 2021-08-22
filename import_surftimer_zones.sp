@@ -85,7 +85,7 @@ public void OnConnect(Database db, const char[] error, any data)
 	db.Query(sql_GetZones, sQuery);
 }
 
-public void sql_GetZones(Database db, DBResultSet results, const char[] error, int userid)
+public void sql_GetZones(Database db, DBResultSet results, const char[] error, any data)
 {
 	if (db == null || strlen(error) > 0)
 	{
@@ -334,7 +334,7 @@ void IterateMaps()
 	delete g_aMaps;
 }
 
-public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error, DataPack pack)
+public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error, any pack)
 {
 	if (db == null || strlen(error) > 0)
 	{
@@ -343,9 +343,9 @@ public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error,
 	}
 
 	char sMap[32];
-	pack.Reset();
-	pack.ReadString(sMap, sizeof(sMap));
-	delete pack;
+	view_as<DataPack>(pack).Reset();
+	view_as<DataPack>(pack).ReadString(sMap, sizeof(sMap));
+	delete view_as<DataPack>(pack);
 
 	if (results.HasResults && results.FetchRow())
 	{
