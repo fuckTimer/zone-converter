@@ -367,7 +367,12 @@ public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error,
 void LoopZonesAndCreate(const char[] map, int tier, int maxvelocity)
 {
 	char sPath[PLATFORM_MAX_PATH + 1];
-	BuildPath(Path_SM, sPath, sizeof(sPath), "data/zones/");
+	BuildPath(Path_SM, sPath, sizeof(sPath), "data/zones/Tier%d/", tier);
+
+	if (!DirExists(sPath))
+    {
+        CreateDirectory(sPath, FPERM_U_READ|FPERM_U_WRITE|FPERM_U_EXEC|FPERM_G_READ|FPERM_G_EXEC|FPERM_O_READ|FPERM_O_EXEC);
+    }
 
 	char sFile[PLATFORM_MAX_PATH + 1];
 	FormatEx(sFile, sizeof(sFile), "%s%s.zon", sPath, map);
