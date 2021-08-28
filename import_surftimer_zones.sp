@@ -29,7 +29,6 @@ enum struct eImportZone
 	int ID;
 	char Map[32];
 	int Tier;
-	int PreSpeed;
 	int MaxVelocity;
 }
 
@@ -253,6 +252,9 @@ void PrepareZone(const char[] name, const char[] map, int id, int type, int type
 	IntToString(typeid, sBuffer, sizeof(sBuffer));
 	smKeys.SetString("Checkpoint", type == 4 ? sBuffer : "0");
 
+	IntToString(prespeed, sBuffer, sizeof(sBuffer));
+	smKeys.SetString("PreSpeed", sBuffer);
+
 	smKeys.SetString("Misc", !bonus && (type == 0 || type > 4) ? "1" : "0");
 	smKeys.SetString("Speed", type == 5 ? "1" : "0");
 	smKeys.SetString("TeleToStart", type == 6 ? "1" : "0");
@@ -287,7 +289,6 @@ void PrepareZone(const char[] name, const char[] map, int id, int type, int type
 	data.SetName = false;
 	data.Show = false;
 	data.ID = id;
-	data.PreSpeed = prespeed;
 	strcopy(data.Map, sizeof(eImportZone::Map), map);
 
 	g_aZones.PushArray(data, sizeof(data));
@@ -425,7 +426,6 @@ bool AddZone(KeyValues kv, eImportZone data)
 		kv.SetVector("end", data.End);
 		kv.SetVector("origin", data.Origin);
 		kv.SetString("origin_name", data.OriginName);
-		kv.SetNum("prespeed", data.PreSpeed);
 		kv.SetFloat("radius", data.Radius);
 
 		if (kv.JumpToKey("effects", true))
