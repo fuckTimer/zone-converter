@@ -45,24 +45,60 @@ public void OnMapStart()
 
 public Action Command_ImportZones(int client, int args)
 {
-	if (!SQL_CheckConfig("surftimer"))
+	if (args < 1)
 	{
-		SetFailState("Can not find the \"surftimer\" database entry in your databases.cfg...");
-		return;
+		ReplyToCommand(client, "Usage: sm_importzones <database> [map] [0-zonename/1-hookname] [prespeed 0/1]");
+		return Plugin_Handled;
 	}
+
+	char sDatabase[24];
+	GetCmdArg(1, sDatabase, sizeof(sDatabase));
+
+	if (!SQL_CheckConfig(sDatabase))
+	{
+		SetFailState("Can not find the \"%s\" database entry in your databases.cfg...", sDatabase);
+		return Plugin_Handled;
+	}
+
+	char sMap[MAX_NAME_LENGTH];
+	GetCmdArg(2, sMap, sizeof(sMap));
+
+	char sBuffer[4];
+	GetCmdArg(3, sBuffer, sizeof(sBuffer));
+	bool bZoneColumn = view_as<bool>(StringToInt(sBuffer));
+
+	GetCmdArg(4, sBuffer, sizeof(sBuffer));
+	bool bPrespeed = view_as<bool>(StringToInt(sBuffer));
 
 	PrintToServer("Connecting to database...");
 
-	Database.Connect(OnConnect, "surftimer");
+	DataPack pack = new DataPack();
+	pack.WriteString(sMap);
+	pack.WriteCell(bZoneColumn);
+	pack.WriteCell(bPrespeed);
+	Database.Connect(OnConnect, sDatabase, pack);
+
+	return Plugin_Handled;
 }
 
 public void OnConnect(Database db, const char[] error, any data)
 {
+	DataPack pack = view_as<DataPack>(data);
+
 	if (db == null || strlen(error))
 	{
+		delete pack; 
 		SetFailState("Unable to connect to database... Error: %s", error);
 		return;
 	}
+
+	pack.Reset();
+
+	char sMap[MAX_NAME_LENGTH];
+	pack.ReadString(sMap, sizeof(sMap));
+	bool bZoneColumn = view_as<bool>(pack.ReadCell());
+	bool bPrespeed = view_as<bool>(pack.ReadCell());
+	delete pack;
 
 	PrintToServer("Connected to database...");
 
@@ -79,9 +115,10 @@ public void OnConnect(Database db, const char[] error, any data)
 
 	PrintToServer("Loading zones...");
 
-	char sQuery[256];
-	db.Format(sQuery, sizeof(sQuery), "SELECT mapname, zoneid, zonetype, zonetypeid, zonegroup, pointa_x, pointa_y, pointa_z, pointb_x, pointb_y, pointb_z, hookname, prespeed FROM ck_zones ORDER BY mapname ASC, zonegroup ASC, zonetype ASC, zonetypeID ASC;");
-	db.Query(sql_GetZones, sQuery);
+	char sQuery[512];
+	db.Format(sQuery, sizeof(sQuery), "SELECT mapname, zoneid, zonetype, zonetypeid, zonegroup, pointa_x, pointa_y, pointa_z, pointb_x, pointb_y, pointb_z, %s%s FROM ck_zones WHERE mapname LIKE \"%%%s%%\" ORDER BY mapname ASC, zonegroup ASC, zonetype ASC, zonetypeID ASC;",
+	bZoneColumn ? "hookname" : "zonename", bPrespeed ? ", prespeed" : "", sMap);
+	db.Query(sql_GetZones, sQuery, bPrespeed);
 }
 
 public void sql_GetZones(Database db, DBResultSet results, const char[] error, any data)
@@ -113,7 +150,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, a
 			int iZoneType;
 			int iZoneTypeID;
 			int iZoneGroup;
-			int iPreSpeed;
+			int iPreSpeed = -1;
 
 			float fPointA[3], fPointB[3];
 			
@@ -133,7 +170,10 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, a
 			fPointB[1] = results.FetchFloat(9);
 			fPointB[2] = results.FetchFloat(10);
 
-			iPreSpeed = results.FetchInt(12);
+			if (results.FieldCount > 12)
+			{
+				iPreSpeed = results.FetchInt(12);
+			}
 
 			char sName[MAX_ZONE_NAME_LENGTH];
 			bool bBonus = false;
@@ -206,8 +246,12 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, a
 		SortArray();
 		PrintToServer("Array sorted...");
 		PrintToServer("Creating zone files...");
-		IterateMaps();
+		IterateMaps(data);
 		PrintToServer("Zone files created.");
+	}
+	else
+	{
+		PrintToServer("No zones found.");
 	}
 }
 
@@ -315,7 +359,7 @@ public int Sorting(int i, int j, Handle array, Handle hndl)
     return strcmp(zone1.Name, zone2.Name);
 }
 
-void IterateMaps()
+void IterateMaps(bool prespeed)
 {
 	char sMap[64];
 	for (int i = 0; i < g_aMaps.Length; ++i)
@@ -328,7 +372,7 @@ void IterateMaps()
 		pack.WriteString(sMap);
 
 		char sQuery[256];
-		g_dDB.Format(sQuery, sizeof(sQuery), "SELECT tier, maxvelocity FROM ck_maptier WHERE mapname = \"%s\"", sMap);
+		g_dDB.Format(sQuery, sizeof(sQuery), "SELECT tier%s FROM ck_maptier WHERE mapname = \"%s\"", prespeed ? ", maxvelocity" : "", sMap);
 		g_dDB.Query(SQL_GetMapTier, sQuery, pack);
 	}
 
@@ -351,7 +395,12 @@ public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error,
 	if (results.HasResults && results.FetchRow())
 	{
 		int iTier = results.FetchInt(0);
-		int iMaxVelocity = results.FetchInt(1);
+
+		int iMaxVelocity = -1;
+		if (results.FieldCount > 1)
+		{
+			iMaxVelocity = results.FetchInt(1);
+		}
 
 		LoopZonesAndCreate(sMap, iTier, iMaxVelocity);
 		PrintToServer("Tier loaded for map %s (Tier: %d, MaxVelocity: %d)", sMap, iTier, iMaxVelocity);
