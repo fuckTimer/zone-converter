@@ -290,7 +290,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, a
 		PrintToServer("Creating zone files...");
 		IterateMaps();
 		GetMapStages();
-		GetMapBonus(),
+		GetMapBonus();
 		PrintToServer("Zone files created.");
 	}
 	else
