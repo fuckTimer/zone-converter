@@ -9,6 +9,7 @@ ArrayList g_aZones = null;
 ArrayList g_aMaps = null;
 Database g_dDB = null;
 StringMap g_smTiers = null;
+StringMap g_smMapper = null;
 StringMap g_smCheckpoints = null;
 StringMap g_smStages = null;
 StringMap g_smBonus = null;
@@ -40,10 +41,7 @@ enum struct eImportZone
 public void OnPluginStart()
 {
 	RegAdminCmd("sm_importzones", Command_ImportZones, ADMFLAG_ROOT);
-	RegAdminCmd("sm_genmaptiers", Command_GenMapTiers, ADMFLAG_ROOT);
-	RegAdminCmd("sm_genmapcheckpoints", Command_GenMapCheckpoints, ADMFLAG_ROOT);
-	RegAdminCmd("sm_genmapstages", Command_GenMapStages, ADMFLAG_ROOT);
-	RegAdminCmd("sm_genmapbonus", Command_GenMapBonus, ADMFLAG_ROOT);
+	RegAdminCmd("sm_gendetails", Command_GenDetails, ADMFLAG_ROOT);
 }
 
 public void OnMapStart()
@@ -52,119 +50,48 @@ public void OnMapStart()
 	delete g_aZones;
 }
 
-public Action Command_GenMapTiers(int client, int args)
+public Action Command_GenDetails(int client, int args)
 {
-	if (g_smTiers == null)
-	{
-		SetFailState("Stringmap is null");
-		return Plugin_Handled;
-	}
-
-	JSONObject jObj = new JSONObject();
+	JSONArray jaDetails = new JSONArray();
 	
 	StringMapSnapshot snap = g_smTiers.Snapshot();
 
 	for (int i = 0; i < snap.Length; i++)
 	{
+		JSONObject jObj = new JSONObject();
+
 		char sMap[64];
-		int iTier = 0;
 		snap.GetKey(i, sMap, sizeof(sMap));
-		g_smTiers.GetValue(sMap, iTier);
-		jObj.SetInt(sMap, iTier);
+		jObj.SetString("name", sMap);
+
+		int iBuffer = 0;
+		g_smTiers.GetValue(sMap, iBuffer);
+		jObj.SetInt((("tier", iBuffer);))
+
+		char sMapper[256];
+		g_smMapper.GetString(sMap, sMapper, sizeof(sMapper));
+		jObj.SetString("mapper", sMapper);
+
+		iBuffer = 0;
+		g_smCheckpoints.GetValue(sMap, iBuffer);
+		jObj.SetInt((("checkpoints", iBuffer);))
+
+		iBuffer = 0;
+		g_smStages.GetValue(sMap, iBuffer);
+		jObj.SetInt((("stages", iBuffer);))
+
+		iBuffer = 0;
+		g_smBonus.GetValue(sMap, iBuffer);
+		jObj.SetInt((("bonus", iBuffer);))
+
+		jaDetails.Push(jObj);
 	}
+
+	delete snap;
 
 	char sFile[PLATFORM_MAX_PATH + 1];
-	BuildPath(Path_SM, sFile, sizeof(sFile), "data/maptiers.json");
-	jObj.ToFile(sFile);
-
-	delete jObj;
-	return Plugin_Handled;
-}
-
-public Action Command_GenMapCheckpoints(int client, int args)
-{
-	if (g_smCheckpoints == null)
-	{
-		SetFailState("Stringmap is null");
-		return Plugin_Handled;
-	}
-
-	JSONObject jObj = new JSONObject();
-	
-	StringMapSnapshot snap = g_smCheckpoints.Snapshot();
-
-	for (int i = 0; i < snap.Length; i++)
-	{
-		char sMap[64];
-		int iCheckpoints = 0;
-		snap.GetKey(i, sMap, sizeof(sMap));
-		g_smCheckpoints.GetValue(sMap, iCheckpoints);
-		jObj.SetInt(sMap, iCheckpoints);
-	}
-
-	char sFile[PLATFORM_MAX_PATH + 1];
-	BuildPath(Path_SM, sFile, sizeof(sFile), "data/mapcheckpoints.json");
-	jObj.ToFile(sFile);
-
-	delete jObj;
-	return Plugin_Handled;
-}
-
-public Action Command_GenMapStages(int client, int args)
-{
-	if (g_smStages == null)
-	{
-		SetFailState("Stringmap is null");
-		return Plugin_Handled;
-	}
-
-	JSONObject jObj = new JSONObject();
-	
-	StringMapSnapshot snap = g_smStages.Snapshot();
-
-	for (int i = 0; i < snap.Length; i++)
-	{
-		char sMap[64];
-		int iStages = 0;
-		snap.GetKey(i, sMap, sizeof(sMap));
-		g_smStages.GetValue(sMap, iStages);
-		jObj.SetInt(sMap, iStages);
-	}
-
-	char sFile[PLATFORM_MAX_PATH + 1];
-	BuildPath(Path_SM, sFile, sizeof(sFile), "data/mapstages.json");
-	jObj.ToFile(sFile);
-
-	delete jObj;
-	return Plugin_Handled;
-}
-
-public Action Command_GenMapBonus(int client, int args)
-{
-	if (g_smBonus == null)
-	{
-		SetFailState("Stringmap is null");
-		return Plugin_Handled;
-	}
-
-	JSONObject jObj = new JSONObject();
-	
-	StringMapSnapshot snap = g_smBonus.Snapshot();
-
-	for (int i = 0; i < snap.Length; i++)
-	{
-		char sMap[64];
-		int iBonus = 0;
-		snap.GetKey(i, sMap, sizeof(sMap));
-		g_smBonus.GetValue(sMap, iBonus);
-		jObj.SetInt(sMap, iBonus);
-	}
-
-	char sFile[PLATFORM_MAX_PATH + 1];
-	BuildPath(Path_SM, sFile, sizeof(sFile), "data/mapbonus.json");
-	jObj.ToFile(sFile);
-
-	delete jObj;
+	BuildPath(Path_SM, sFile, sizeof(sFile), "data/mapdetails.json");
+	jaDetails.ToFile(sFile, 0x1F);
 	return Plugin_Handled;
 }
 
@@ -241,7 +168,7 @@ public void OnConnect(Database db, const char[] error, any data)
 	PrintToServer("Loading zones...");
 
 	char sQuery[512];
-	db.Format(sQuery, sizeof(sQuery), "SELECT mapname, zoneid, zonetype, zonetypeid, zonegroup, pointa_x, pointa_y, pointa_z, pointb_x, pointb_y, pointb_z, %s%s FROM ck_zones WHERE mapname LIKE \"%%%s%%\" ORDER BY mapname ASC, zonegroup ASC, zonetype ASC, zonetypeID ASC;",
+	db.Format(sQuery, sizeof(sQuery), "SELECT mapname, zoneid, zonetype, zonetypeid, zonegroup, pointa_x, pointa_y, pointa_z, pointb_x, pointb_y, pointb_z, %s%s FROM ck_zones WHERE mapname LIKE \"%%%s%%\" AND mapname NOT LIKE \"surf_atoz\" ORDER BY mapname ASC, zonegroup ASC, zonetype ASC, zonetypeID ASC;",
 	bZoneColumn ? "hookname" : "zonename", bPrespeed ? ", prespeed" : "", sMap);
 	db.Query(sql_GetZones, sQuery, bPrespeed);
 }
@@ -490,6 +417,7 @@ public int Sorting(int i, int j, Handle array, Handle hndl)
 void IterateMaps(bool prespeed)
 {
 	g_smTiers = new StringMap();
+	g_smMapper = new StringMap();
 	g_smCheckpoints = new StringMap();
 	g_smStages = new StringMap();
 	g_smBonus = new StringMap();
@@ -505,7 +433,7 @@ void IterateMaps(bool prespeed)
 		pack.WriteString(sMap);
 
 		char sQuery[256];
-		g_dDB.Format(sQuery, sizeof(sQuery), "SELECT tier%s FROM ck_maptier WHERE mapname = \"%s\"", prespeed ? ", maxvelocity" : "", sMap);
+		g_dDB.Format(sQuery, sizeof(sQuery), "SELECT tier, mapper%s FROM ck_maptier WHERE mapname = \"%s\"", prespeed ? ", maxvelocity" : "", sMap);
 		g_dDB.Query(SQL_GetMapTier, sQuery, pack);
 	}
 
@@ -529,13 +457,17 @@ public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error,
 	{
 		int iTier = results.FetchInt(0);
 
+		char sMapper[256];
+		results.FetchString(1, sMapper, sizeof(sMapper));
+
 		int iMaxVelocity = -1;
-		if (results.FieldCount > 1)
+		if (results.FieldCount > 2)
 		{
-			iMaxVelocity = results.FetchInt(1);
+			iMaxVelocity = results.FetchInt(2);
 		}
 
 		g_smTiers.SetValue(sMap, iTier);
+		g_smMapper.SetString(sMap, sMapper);
 
 		LoopZonesAndCreate(sMap, iTier, iMaxVelocity);
 		PrintToServer("Tier loaded for map %s (Tier: %d, MaxVelocity: %d)", sMap, iTier, iMaxVelocity);
@@ -545,7 +477,7 @@ public void SQL_GetMapTier(Database db, DBResultSet results, const char[] error,
 	else
 	{
 		LoopZonesAndCreate(sMap, 0, 3500);
-		PrintToServer("Tier not loaded for map %s (Tier: 0)", sMap);
+		LogMessage("Tier not loaded for map %s (Tier: 0)", sMap);
 	}
 }
 
