@@ -66,7 +66,7 @@ public Action Command_GenDetails(int client, int args)
 
 		int iBuffer = 0;
 		g_smTiers.GetValue(sMap, iBuffer);
-		jObj.SetInt((("tier", iBuffer);))
+		jObj.SetInt("tier", iBuffer);
 
 		char sMapper[256];
 		g_smMapper.GetString(sMap, sMapper, sizeof(sMapper));
@@ -74,15 +74,15 @@ public Action Command_GenDetails(int client, int args)
 
 		iBuffer = 0;
 		g_smCheckpoints.GetValue(sMap, iBuffer);
-		jObj.SetInt((("checkpoints", iBuffer);))
+		jObj.SetInt("checkpoints", iBuffer);
 
 		iBuffer = 0;
 		g_smStages.GetValue(sMap, iBuffer);
-		jObj.SetInt((("stages", iBuffer);))
+		jObj.SetInt("stages", iBuffer);
 
 		iBuffer = 0;
 		g_smBonus.GetValue(sMap, iBuffer);
-		jObj.SetInt((("bonus", iBuffer);))
+		jObj.SetInt("bonus", iBuffer);
 
 		jaDetails.Push(jObj);
 	}
@@ -196,7 +196,7 @@ public void sql_GetZones(Database db, DBResultSet results, const char[] error, a
 
 		while (results.FetchRow())
 		{
-			char sMap[32], sHookName[32];
+			char sMap[64], sHookName[64];
 
 			int iZoneID;
 			int iZoneType;
@@ -513,7 +513,7 @@ void LoopZonesAndCreate(const char[] map, int tier, int maxvelocity)
 	{
 		g_aZones.GetArray(i, data, sizeof(data));
 
-		if (StrContains(data.Map, map, false) != -1)
+		if (StrEqual(data.Map, map, false))
 		{
 			data.Tier = tier;
 			data.MaxVelocity = maxvelocity;
